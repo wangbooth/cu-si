@@ -1,0 +1,22 @@
+{
+  "name": "cusi-claude-code-hook",
+  "version": "1.0.0",
+  "description": "程序员猝死提醒 - Claude Code Hook",
+  "type": "module",
+  "main": "src/hook.js",
+  "bin": {
+    "cusi-hook": "./src/hook.js",
+    "cusi-config": "./src/cli.js"
+  },
+  "scripts": {
+    "install-hook": "node src/install.js",
+    "uninstall-hook": "node src/install.js --uninstall"
+  },
+  "keywords": [
+    "claude-code",
+    "health",
+    "reminder",
+    "programmer"
+  ],
+  "license": "MIT"
+}
