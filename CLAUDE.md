@@ -53,6 +53,43 @@ Three-tier progressive reminders:
 
 Positive reinforcement: Early sleep streaks, weekly health reports.
 
+## Development Commands
+
+### Claude Code Hook
+```bash
+cd claude-code-hook
+npm run install-hook      # Install hook to Claude Code
+npm run uninstall-hook    # Remove hook from Claude Code
+node src/cli.js status    # Check current status
+node src/cli.js test      # Test reminder display
+```
+
+### Validate Events Data
+```bash
+# Install ajv-cli globally
+npm install -g ajv-cli ajv-formats
+
+# Validate JSON against schema
+ajv validate -s data/events.schema.json -d data/events.json --spec=draft7 -c ajv-formats
+```
+
+## Project Structure
+
+```
+cusi/
+├── claude-code-hook/     # Claude Code integration
+│   └── src/
+│       ├── hook.js       # Main hook script (stop event)
+│       ├── cli.js        # Configuration CLI tool
+│       └── install.js    # Install/uninstall script
+├── data/
+│   ├── events.json       # Event database
+│   └── events.schema.json
+└── .github/
+    ├── ISSUE_TEMPLATE/   # Event submission form
+    └── workflows/        # Automation (process events, check links)
+```
+
 ## Key Constraints
 
 - **Privacy**: No data collection/upload; IP for local geolocation only; stats stored locally
