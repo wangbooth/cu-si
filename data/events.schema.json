@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cusi Events Database",
+  "description": "程序员健康警示事件数据库",
+  "type": "object",
+  "required": ["version", "last_updated", "disclaimer", "events"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "disclaimer": {
+      "type": "string"
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/event"
+      }
+    }
+  },
+  "definitions": {
+    "event": {
+      "type": "object",
+      "required": [
+        "id",
+        "date_period",
+        "age_range",
+        "industry",
+        "province",
+        "summary",
+        "details",
+        "source",
+        "source_name",
+        "verified",
+        "tags",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "唯一标识符，格式：EVT-YYYYMMDD-XXXX",
+          "pattern": "^EVT-\\d{8}-[A-Z0-9]{4}$"
+        },
+        "date_period": {
+          "type": "string",
+          "description": "模糊化时间段",
+          "examples": ["2024-Q4", "2024-Q3", "2023年下半年"]
+        },
+        "age_range": {
+          "type": "string",
+          "description": "年龄段",
+          "enum": ["20-25岁", "25-30岁", "30-35岁", "35-40岁", "40-45岁", "45岁以上", "未知"]
+        },
+        "industry": {
+          "type": "string",
+          "description": "行业",
+          "enum": ["互联网", "游戏", "金融科技", "电商", "教育科技", "企业服务", "硬件/IoT", "通信", "其他IT", "未知"]
+        },
+        "province": {
+          "type": "string",
+          "description": "省份"
+        },
+        "city": {
+          "type": "string",
+          "description": "城市（仅一线/新一线城市，可选）"
+        },
+        "summary": {
+          "type": "string",
+          "description": "事件摘要，100字以内",
+          "maxLength": 100
+        },
+        "details": {
+          "type": "string",
+          "description": "详细描述，200字以内",
+          "maxLength": 200
+        },
+        "source": {
+          "type": "string",
+          "description": "新闻来源URL",
+          "format": "uri"
+        },
+        "source_name": {
+          "type": "string",
+          "description": "媒体名称"
+        },
+        "source_archive": {
+          "type": "string",
+          "description": "存档链接（archive.org等）",
+          "format": "uri"
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "是否经过人工核实"
+        },
+        "verified_by": {
+          "type": "string",
+          "description": "核实人GitHub用户名"
+        },
+        "verified_at": {
+          "type": "string",
+          "description": "核实时间",
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "description": "标签",
+          "items": {
+            "type": "string",
+            "enum": ["加班", "熬夜", "连续工作", "忽视身体信号", "猝死", "过劳"]
+          }
+        },
+        "issue_number": {
+          "type": "integer",
+          "description": "关联的GitHub Issue编号"
+        },
+        "created_at": {
+          "type": "string",
+          "description": "记录创建时间",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "description": "记录更新时间",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

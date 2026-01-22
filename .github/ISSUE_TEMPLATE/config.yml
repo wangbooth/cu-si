@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "\U0001F4AC 问题反馈 / Feedback"
+    url: https://github.com/user/cusi/discussions
+    about: "使用问题、功能建议请在 Discussions 中讨论"
+  - name: "\U0001F4D6 使用文档 / Documentation"
+    url: https://github.com/user/cusi#readme
+    about: "查看项目说明和使用方法"

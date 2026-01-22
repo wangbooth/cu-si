@@ -1,0 +1,170 @@
+name: Process Approved Event
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  process-event:
+    if: github.event.label.name == 'approved'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Parse issue and update events.json
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issue = context.payload.issue;
+            const body = issue.body;
+
+            // Helper function to extract field value from issue body
+            function extractField(body, fieldName) {
+              const patterns = [
+                new RegExp(`### ${fieldName}[\\s\\S]*?\\n\\n([^\\n#]+)`, 'i'),
+                new RegExp(`### ${fieldName}[\\s\\S]*?\\n([^\\n#]+)`, 'i'),
+              ];
+              for (const pattern of patterns) {
+                const match = body.match(pattern);
+                if (match && match[1].trim() && match[1].trim() !== '_No response_') {
+                  return match[1].trim();
+                }
+              }
+              return null;
+            }
+
+            // Helper function to extract checkboxes
+            function extractCheckboxes(body, fieldName) {
+              const sectionMatch = body.match(new RegExp(`### ${fieldName}[\\s\\S]*?(?=###|$)`, 'i'));
+              if (!sectionMatch) return [];
+              const section = sectionMatch[0];
+              const checked = [];
+              const checkboxPattern = /- \[x\] (.+)/gi;
+              let match;
+              while ((match = checkboxPattern.exec(section)) !== null) {
+                // Extract tag name, remove English translation part
+                let tag = match[1].trim().split(' / ')[0];
+                checked.push(tag);
+              }
+              return checked;
+            }
+
+            // Extract fields from issue body
+            const sourceUrl = extractField(body, '🔗 新闻来源链接');
+            const sourceName = extractField(body, '📰 媒体名称');
+            const datePeriod = extractField(body, '📅 事件时间段');
+            const ageRange = extractField(body, '👤 年龄段');
+            const industry = extractField(body, '🏢 行业');
+            const province = extractField(body, '📍 省份');
+            const city = extractField(body, '🏙️ 城市');
+            const summary = extractField(body, '📝 事件摘要');
+            const details = extractField(body, '📖 详细描述');
+            const tags = extractCheckboxes(body, '🏷️ 相关标签');
+            const additional = extractField(body, '💬 补充信息');
+
+            // Validate required fields
+            if (!sourceUrl || !summary || !details) {
+              core.setFailed('Missing required fields in issue');
+              return;
+            }
+
+            // Generate event ID: EVT-YYYYMMDD-XXXX
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+            const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const eventId = `EVT-${dateStr}-${randomSuffix}`;
+
+            // Clean up date period (remove the month range part)
+            let cleanDatePeriod = datePeriod;
+            if (datePeriod) {
+              cleanDatePeriod = datePeriod.replace(/\s*\([^)]*\)/, '').trim();
+            }
+
+            // Clean up age range and industry (remove "未知 / Unknown" format)
+            let cleanAgeRange = ageRange === '未知 / Unknown' ? '未知' : ageRange;
+            let cleanIndustry = industry === '未知 / Unknown' ? '未知' :
+                               industry === '其他IT / Other IT' ? '其他IT' : industry;
+            let cleanProvince = province === '未知 / Unknown' ? '未知' :
+                               province === '其他省份' ? '其他' : province;
+
+            // Create new event object
+            const newEvent = {
+              id: eventId,
+              date_period: cleanDatePeriod || '未知',
+              age_range: cleanAgeRange || '未知',
+              industry: cleanIndustry || '未知',
+              province: cleanProvince || '未知',
+              summary: summary.slice(0, 100),
+              details: details.slice(0, 200),
+              source: sourceUrl,
+              source_name: sourceName || '未知媒体',
+              verified: true,
+              verified_by: context.actor,
+              verified_at: now.toISOString(),
+              tags: tags.length > 0 ? tags : ['过劳'],
+              issue_number: issue.number,
+              created_at: now.toISOString()
+            };
+
+            // Add optional fields
+            if (city && city !== '_No response_') {
+              newEvent.city = city;
+            }
+
+            // Read existing events.json
+            const eventsPath = 'data/events.json';
+            let eventsData = JSON.parse(fs.readFileSync(eventsPath, 'utf8'));
+
+            // Add new event at the beginning (newest first)
+            eventsData.events.unshift(newEvent);
+            eventsData.last_updated = now.toISOString();
+
+            // Write back to file
+            fs.writeFileSync(eventsPath, JSON.stringify(eventsData, null, 2) + '\n');
+
+            // Store event ID for later steps
+            core.exportVariable('EVENT_ID', eventId);
+            core.exportVariable('ISSUE_NUMBER', issue.number);
+
+            console.log(`Created event ${eventId} from issue #${issue.number}`);
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add data/events.json
+          git commit -m "Add event ${{ env.EVENT_ID }} from issue #${{ env.ISSUE_NUMBER }}"
+          git push
+
+      - name: Close issue with comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = process.env.ISSUE_NUMBER;
+            const eventId = process.env.EVENT_ID;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt(issueNumber),
+              body: `## ✅ 事件已收录 / Event Added\n\n感谢您的提交！此事件已通过审核并添加到数据库。\n\n- **事件 ID**: \`${eventId}\`\n- **审核人**: @${context.actor}\n- **收录时间**: ${new Date().toISOString()}\n\n---\n\n此 Issue 将自动关闭。如有问题请开启新的 Issue。`
+            });
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt(issueNumber),
+              state: 'closed',
+              labels: ['event-submission', 'approved', 'processed']
+            });

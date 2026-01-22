@@ -1,0 +1,97 @@
+name: Validate Events JSON
+
+on:
+  pull_request:
+    paths:
+      - 'data/events.json'
+  push:
+    paths:
+      - 'data/events.json'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ajv-cli
+        run: npm install -g ajv-cli ajv-formats
+
+      - name: Validate events.json against schema
+        run: |
+          ajv validate -s data/events.schema.json -d data/events.json --spec=draft7 -c ajv-formats
+
+      - name: Check for duplicate IDs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const eventsData = JSON.parse(fs.readFileSync('data/events.json', 'utf8'));
+            const ids = eventsData.events.map(e => e.id);
+            const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+
+            if (duplicates.length > 0) {
+              core.setFailed(`Duplicate event IDs found: ${duplicates.join(', ')}`);
+            } else {
+              console.log(`✅ No duplicate IDs found (${ids.length} events)`);
+            }
+
+      - name: Check content length limits
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const eventsData = JSON.parse(fs.readFileSync('data/events.json', 'utf8'));
+            const errors = [];
+
+            for (const event of eventsData.events) {
+              if (event.summary && event.summary.length > 100) {
+                errors.push(`Event ${event.id}: summary exceeds 100 chars (${event.summary.length})`);
+              }
+              if (event.details && event.details.length > 200) {
+                errors.push(`Event ${event.id}: details exceeds 200 chars (${event.details.length})`);
+              }
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(`Content length violations:\n${errors.join('\n')}`);
+            } else {
+              console.log('✅ All content lengths are within limits');
+            }
+
+      - name: Check events are sorted by date (newest first)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const eventsData = JSON.parse(fs.readFileSync('data/events.json', 'utf8'));
+            const events = eventsData.events;
+
+            if (events.length < 2) {
+              console.log('✅ Less than 2 events, skipping sort check');
+              return;
+            }
+
+            // Check if created_at is in descending order
+            let sorted = true;
+            for (let i = 0; i < events.length - 1; i++) {
+              const current = new Date(events[i].created_at);
+              const next = new Date(events[i + 1].created_at);
+              if (current < next) {
+                sorted = false;
+                console.log(`Warning: Event ${events[i].id} is older than ${events[i + 1].id}`);
+              }
+            }
+
+            if (!sorted) {
+              console.log('⚠️ Events may not be in newest-first order');
+            } else {
+              console.log('✅ Events are properly sorted (newest first)');
+            }

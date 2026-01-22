@@ -1,0 +1,177 @@
+name: "\U0001F4CB 事件报告 / Event Report"
+description: "提交程序员健康警示事件 / Submit a programmer health warning event"
+title: "[事件] "
+labels: ["event-submission", "pending-review"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 感谢您的提交 / Thanks for submitting
+
+        请确保事件来自**公开媒体报道**，并提供可验证的新闻来源。
+        Please ensure the event is from **public media reports** with verifiable news sources.
+
+        ---
+
+  - type: input
+    id: source_url
+    attributes:
+      label: "\U0001F517 新闻来源链接 / News Source URL"
+      description: "必须是公开可访问的新闻报道链接"
+      placeholder: "https://news.example.com/article/..."
+    validations:
+      required: true
+
+  - type: input
+    id: source_name
+    attributes:
+      label: "\U0001F4F0 媒体名称 / Media Name"
+      description: "新闻来源的媒体名称"
+      placeholder: "例如：澎湃新闻、新京报、界面新闻..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: date_period
+    attributes:
+      label: "\U0001F4C5 事件时间段 / Event Period"
+      description: "选择事件发生的大致时间段（模糊化处理）"
+      options:
+        - "2025-Q1 (1-3月)"
+        - "2025-Q2 (4-6月)"
+        - "2024-Q4 (10-12月)"
+        - "2024-Q3 (7-9月)"
+        - "2024-Q2 (4-6月)"
+        - "2024-Q1 (1-3月)"
+        - "2023年下半年"
+        - "2023年上半年"
+        - "更早 / Earlier"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: age_range
+    attributes:
+      label: "\U0001F464 年龄段 / Age Range"
+      description: "当事人的大致年龄段"
+      options:
+        - "20-25岁"
+        - "25-30岁"
+        - "30-35岁"
+        - "35-40岁"
+        - "40-45岁"
+        - "45岁以上"
+        - "未知 / Unknown"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: industry
+    attributes:
+      label: "\U0001F3E2 行业 / Industry"
+      description: "所属行业类型"
+      options:
+        - "互联网"
+        - "游戏"
+        - "金融科技"
+        - "电商"
+        - "教育科技"
+        - "企业服务"
+        - "硬件/IoT"
+        - "通信"
+        - "其他IT / Other IT"
+        - "未知 / Unknown"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: province
+    attributes:
+      label: "\U0001F4CD 省份 / Province"
+      description: "事件发生地省份"
+      options:
+        - "北京"
+        - "上海"
+        - "广东"
+        - "浙江"
+        - "江苏"
+        - "四川"
+        - "湖北"
+        - "陕西"
+        - "福建"
+        - "山东"
+        - "天津"
+        - "重庆"
+        - "河南"
+        - "湖南"
+        - "安徽"
+        - "辽宁"
+        - "其他省份"
+        - "未知 / Unknown"
+    validations:
+      required: true
+
+  - type: input
+    id: city
+    attributes:
+      label: "\U0001F3D9️ 城市 / City (可选)"
+      description: "仅填写一线或新一线城市，其他城市请留空以保护隐私"
+      placeholder: "北京/上海/广州/深圳/杭州/成都/武汉/西安/南京/苏州..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: "\U0001F4DD 事件摘要 / Summary"
+      description: "100字以内的简短摘要，用于提醒弹窗展示"
+      placeholder: |
+        例如：某互联网公司程序员连续加班后在工位突发不适，经抢救无效离世。
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: "\U0001F4D6 详细描述 / Details"
+      description: "200字以内，包含警示意义的细节（避免血腥描述）"
+      placeholder: |
+        例如：据报道，当事人此前连续多日加班至深夜，事发当天仍在处理紧急项目。
+        同事反映其曾多次表示身体不适但未及时就医。事件引发业内对程序员健康的广泛关注。
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: tags
+    attributes:
+      label: "\U0001F3F7️ 相关标签 / Tags"
+      description: "选择与事件相关的标签"
+      options:
+        - label: "加班 / Overtime"
+        - label: "熬夜 / Late night"
+        - label: "连续工作 / Continuous work"
+        - label: "忽视身体信号 / Ignored body signals"
+        - label: "猝死 / Sudden death"
+        - label: "过劳 / Overwork"
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: "\u2705 确认事项 / Confirmations"
+      description: "请确认以下事项"
+      options:
+        - label: "我确认此事件来自公开媒体报道，非道听途说"
+          required: true
+        - label: "我确认提供的信息已进行必要的匿名化处理"
+          required: true
+        - label: "我理解此信息仅用于健康警示目的，尊重逝者及家属"
+          required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: "\U0001F4AC 补充信息 / Additional Info (可选)"
+      description: "其他需要说明的信息，如备用新闻链接等"
+      placeholder: "可选填写..."
+    validations:
+      required: false
