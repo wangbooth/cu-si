@@ -1,0 +1,400 @@
+name: Auto Discover Events
+
+on:
+  schedule:
+    - cron: '0 8 * * *'   # 08:00 UTC daily (16:00 CST)
+  workflow_dispatch:
+
+concurrency:
+  group: auto-discover-events
+  cancel-in-progress: false
+
+env:
+  OPENROUTER_MODEL: 'minimax/minimax-m2.5:free'
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Search and create issues
+        uses: actions/github-script@v7
+        env:
+          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ env.OPENROUTER_MODEL }}
+        with:
+          script: |
+            const https = require('https');
+
+            // ============================================================
+            // Constants
+            // ============================================================
+
+            const VALID_TAGS = ['加班', '熬夜', '连续工作', '忽视身体信号', '猝死', '过劳'];
+            const VALID_AGE_RANGES = ['20-25岁', '25-30岁', '30-35岁', '35-40岁', '40-45岁', '45岁以上', '未知'];
+            const VALID_INDUSTRIES = ['互联网', '游戏', '金融科技', '电商', '教育科技', '企业服务', '硬件/IoT', '通信', '其他IT', '未知'];
+            const TAG_BILINGUAL = {
+                '加班': '加班 / Overtime',
+                '熬夜': '熬夜 / Late night',
+                '连续工作': '连续工作 / Continuous work',
+                '忽视身体信号': '忽视身体信号 / Ignored body signals',
+                '猝死': '猝死 / Sudden death',
+                '过劳': '过劳 / Overwork'
+            };
+            const MAX_ISSUES_PER_RUN = 5;
+
+            // ============================================================
+            // Helper: HTTPS POST request
+            // ============================================================
+
+            function httpsPost(url, headers, body) {
+                return new Promise((resolve, reject) => {
+                    const urlObj = new URL(url);
+                    const options = {
+                        hostname: urlObj.hostname,
+                        path: urlObj.pathname + urlObj.search,
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...headers },
+                        timeout: 60000
+                    };
+                    const req = https.request(options, (res) => {
+                        let data = '';
+                        res.on('data', (chunk) => { data += chunk; });
+                        res.on('end', () => {
+                            if (res.statusCode >= 200 && res.statusCode < 300) {
+                                try {
+                                    resolve(JSON.parse(data));
+                                } catch (e) {
+                                    reject(new Error(`Failed to parse response JSON: ${data.slice(0, 200)}`));
+                                }
+                            } else {
+                                reject(new Error(`HTTP ${res.statusCode}: ${data.slice(0, 500)}`));
+                            }
+                        });
+                    });
+                    req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out (60s)')); });
+                    req.on('error', reject);
+                    req.write(JSON.stringify(body));
+                    req.end();
+                });
+            }
+
+            // ============================================================
+            // Step 1: Grok x_search
+            // ============================================================
+
+            const today = new Date().toISOString().slice(0, 10);
+            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+            console.log(`Searching X for events from ${yesterday} to ${today}...`);
+
+            const systemPrompt = `You are an event researcher for a programmer health awareness project.
+            Your task is to search X for reports of IT/tech worker sudden deaths
+            related to overwork, late-night work, or excessive overtime.
+
+            For each event found, assess its credibility on a scale of 1-10 based on:
+            - Is it from a credible news source or verified account?
+            - Are there corroborating posts?
+            - Does it contain specific details (industry, location, circumstances)?
+            - Is it a real incident report (not opinion/commentary/satire)?
+
+            Only include events with credibility >= 7.
+
+            For each qualifying event, extract:
+            - date_period: fuzzy time period (e.g. "2026-Q1")
+            - age_range: one of "20-25岁","25-30岁","30-35岁","35-40岁","40-45岁","45岁以上","未知"
+            - industry: one of "互联网","游戏","金融科技","电商","教育科技","企业服务","硬件/IoT","通信","其他IT","未知"
+            - province: Chinese province or country name for international events
+            - city: major city only, optional
+            - summary: event summary in Chinese, ≤100 chars, single line (no newlines)
+            - details: event details in Chinese, ≤200 chars, single line (no newlines)
+            - source_url: original X post URL or news URL
+            - source_name: media or account name
+            - tags: from ["加班","熬夜","连续工作","忽视身体信号","猝死","过劳"] (use Chinese value only, must be exact match)
+            - credibility: 1-10 score
+            - language: "zh" or "en" (language of original source)
+
+            Respond ONLY with a JSON array. If no events found, respond with [].
+            Do NOT include commentary, only the JSON array.`;
+
+            const userPrompt = `Search X for programmer/IT worker sudden death events from the past 24 hours.
+
+            Search in both Chinese and English:
+            Chinese: 程序员猝死, 码农猝死, IT从业者猝死, 技术人员过劳死, 互联网加班猝死
+            English: programmer sudden death, tech worker died overwork, developer death overtime, IT worker sudden death, software engineer died
+
+            Today's date: ${today}`;
+
+            let grokResponse;
+            try {
+                grokResponse = await httpsPost(
+                    'https://api.x.ai/v1/responses',
+                    { 'Authorization': `Bearer ${process.env.GROK_API_KEY}` },
+                    {
+                        model: 'grok-4-1-fast-reasoning',
+                        input: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        tools: [{
+                            type: 'x_search',
+                            from_date: yesterday,
+                            to_date: today
+                        }]
+                    }
+                );
+            } catch (err) {
+                core.setFailed(`Grok API call failed: ${err.message}`);
+                return;
+            }
+
+            // Parse Grok response — find assistant message text in output items
+            let rawText = '';
+            for (const item of (grokResponse.output || [])) {
+                if (item.type === 'message' && item.role === 'assistant') {
+                    for (const content of (item.content || [])) {
+                        if (content.type === 'text') {
+                            rawText += content.text;
+                        }
+                    }
+                }
+            }
+
+            if (!rawText.trim()) {
+                console.log('Grok returned empty response. No events found.');
+                return;
+            }
+
+            // Extract JSON array from response (handle markdown code blocks)
+            let jsonText = rawText.trim();
+            const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (jsonMatch) {
+                jsonText = jsonMatch[1].trim();
+            }
+
+            let candidates;
+            try {
+                candidates = JSON.parse(jsonText);
+            } catch (err) {
+                core.setFailed(`Failed to parse Grok response as JSON: ${err.message}\nRaw: ${rawText.slice(0, 500)}`);
+                return;
+            }
+
+            if (!Array.isArray(candidates) || candidates.length === 0) {
+                console.log('No events found by Grok.');
+                return;
+            }
+
+            console.log(`Grok found ${candidates.length} candidate(s).`);
+
+            // ============================================================
+            // Post-processing validation
+            // ============================================================
+
+            candidates = candidates.filter(c => {
+                if (!c.source_url || !c.source_url.startsWith('https://')) {
+                    console.log(`Rejected candidate: invalid source_url "${c.source_url}"`);
+                    return false;
+                }
+                return true;
+            });
+
+            for (const c of candidates) {
+                // Strip newlines
+                if (c.summary) c.summary = c.summary.replace(/[\r\n]+/g, ' ').slice(0, 100);
+                if (c.details) c.details = c.details.replace(/[\r\n]+/g, ' ').slice(0, 200);
+
+                // Validate tags
+                c.tags = (c.tags || []).filter(t => VALID_TAGS.includes(t));
+                if (c.tags.length === 0) c.tags = ['过劳'];
+
+                // Validate enums
+                if (!VALID_AGE_RANGES.includes(c.age_range)) c.age_range = '未知';
+                if (!VALID_INDUSTRIES.includes(c.industry)) c.industry = '未知';
+            }
+
+            if (candidates.length === 0) {
+                console.log('All candidates rejected during validation.');
+                return;
+            }
+
+            console.log(`${candidates.length} candidate(s) passed validation.`);
+
+            // ============================================================
+            // Step 2: Dedup via OpenRouter
+            // ============================================================
+
+            // Load existing events
+            const fs = require('fs');
+            const eventsData = JSON.parse(fs.readFileSync('data/events.json', 'utf8'));
+            const existingSummaries = eventsData.events.map(e => e.summary);
+
+            // Fetch open Issues with event-submission label
+            let openIssueSummaries = [];
+            try {
+                const openIssues = await github.rest.issues.listForRepo({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    labels: 'event-submission',
+                    state: 'open',
+                    per_page: 100
+                });
+                for (const issue of openIssues.data) {
+                    const summaryMatch = issue.body?.match(/### 📝 事件摘要[\s\S]*?\n\n([^\n#]+)/i);
+                    if (summaryMatch) {
+                        openIssueSummaries.push(summaryMatch[1].trim());
+                    }
+                }
+            } catch (err) {
+                console.log(`Warning: failed to fetch open issues: ${err.message}`);
+            }
+
+            const allExisting = [...existingSummaries, ...openIssueSummaries];
+            console.log(`Dedup context: ${existingSummaries.length} DB events + ${openIssueSummaries.length} open Issues`);
+
+            let dedupedCandidates = candidates;
+
+            if (allExisting.length > 0 && candidates.length > 0) {
+                const dedupModel = process.env.OPENROUTER_MODEL || 'minimax/minimax-m2.5:free';
+                console.log(`Calling OpenRouter (${dedupModel}) for dedup...`);
+
+                try {
+                    const dedupResponse = await httpsPost(
+                        'https://openrouter.ai/api/v1/chat/completions',
+                        { 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}` },
+                        {
+                            model: dedupModel,
+                            messages: [
+                                {
+                                    role: 'system',
+                                    content: 'You are a deduplication assistant. Compare new event candidates against existing events. Two events are duplicates if they describe the same incident (same person/company/location/timeframe). Respond ONLY with a JSON array of indices (0-based) of candidates that are NOT duplicates.'
+                                },
+                                {
+                                    role: 'user',
+                                    content: `Existing events (from database and pending Issues):\n${allExisting.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nNew candidates:\n${candidates.map((c, i) => `${i}. ${c.summary}`).join('\n')}\n\nReturn the indices of candidates that are genuinely new events, as a JSON array like [0, 2, 3]. If all are duplicates, return [].`
+                                }
+                            ]
+                        }
+                    );
+
+                    const dedupText = dedupResponse.choices?.[0]?.message?.content || '';
+                    // Extract JSON array, stripping any surrounding text
+                    const arrayMatch = dedupText.match(/\[[\d\s,]*\]/);
+                    if (arrayMatch) {
+                        const indices = JSON.parse(arrayMatch[0]);
+                        const validIndices = indices.filter(
+                            i => Number.isInteger(i) && i >= 0 && i < candidates.length
+                        );
+                        dedupedCandidates = validIndices.map(i => candidates[i]);
+                        console.log(`Dedup: ${candidates.length} → ${dedupedCandidates.length} (removed ${candidates.length - dedupedCandidates.length} duplicates)`);
+                    } else {
+                        console.log('Warning: could not parse dedup response, keeping all candidates (fail-open)');
+                    }
+                } catch (err) {
+                    console.log(`Warning: OpenRouter dedup failed: ${err.message}. Keeping all candidates (fail-open).`);
+                }
+            }
+
+            if (dedupedCandidates.length === 0) {
+                console.log('All candidates were duplicates. No issues to create.');
+                return;
+            }
+
+            // ============================================================
+            // Step 3: Create GitHub Issues
+            // ============================================================
+
+            // Sort by credibility descending, cap at MAX_ISSUES_PER_RUN
+            dedupedCandidates.sort((a, b) => (b.credibility || 0) - (a.credibility || 0));
+            if (dedupedCandidates.length > MAX_ISSUES_PER_RUN) {
+                console.log(`Warning: ${dedupedCandidates.length} candidates exceed cap of ${MAX_ISSUES_PER_RUN}. Creating top ${MAX_ISSUES_PER_RUN} only.`);
+                dedupedCandidates = dedupedCandidates.slice(0, MAX_ISSUES_PER_RUN);
+            }
+
+            let createdCount = 0;
+
+            for (const event of dedupedCandidates) {
+                const tagsSection = (event.tags || ['过劳'])
+                    .map(t => `- [x] ${TAG_BILINGUAL[t] || t}`)
+                    .join('\n');
+
+                const cityValue = event.city || '_No response_';
+                const titleSummary = (event.summary || '未知事件').slice(0, 50);
+
+                const issueBody = [
+                    '### \uD83D\uDD17 新闻来源链接 / News Source URL',
+                    '',
+                    event.source_url,
+                    '',
+                    '### \uD83D\uDCF0 媒体名称 / Media Name',
+                    '',
+                    event.source_name || '未知',
+                    '',
+                    '### \uD83D\uDCC5 事件时间段 / Event Period',
+                    '',
+                    event.date_period || '未知',
+                    '',
+                    '### \uD83D\uDC64 年龄段 / Age Range',
+                    '',
+                    event.age_range || '未知',
+                    '',
+                    '### \uD83C\uDFE2 行业 / Industry',
+                    '',
+                    event.industry || '未知',
+                    '',
+                    '### \uD83D\uDCCD 省份 / Province',
+                    '',
+                    event.province || '未知',
+                    '',
+                    '### \uD83C\uDFD9\uFE0F 城市 / City (可选)',
+                    '',
+                    cityValue,
+                    '',
+                    '### \uD83D\uDCDD 事件摘要 / Summary',
+                    '',
+                    event.summary,
+                    '',
+                    '### \uD83D\uDCD6 详细描述 / Details',
+                    '',
+                    event.details,
+                    '',
+                    '### \uD83C\uDFF7\uFE0F 相关标签 / Tags',
+                    '',
+                    tagsSection,
+                    '',
+                    '### \u2705 确认事项 / Confirmations',
+                    '',
+                    '- [x] 我确认此事件来自公开媒体报道，非道听途说',
+                    '- [x] 我确认提供的信息已进行必要的匿名化处理',
+                    '- [x] 我理解此信息仅用于健康警示目的，尊重逝者及家属',
+                    '',
+                    '### \uD83D\uDCAC 补充信息 / Additional Info (可选)',
+                    '',
+                    `Auto-discovered by Grok x_search on ${today}.`,
+                    `Credibility score: ${event.credibility || 'N/A'}/10.`,
+                    `Original language: ${event.language || 'unknown'}.`,
+                ].join('\n');
+
+                try {
+                    const created = await github.rest.issues.create({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        title: `[事件] [Auto] ${titleSummary}`,
+                        body: issueBody,
+                        labels: ['event-submission', 'pending-review', 'auto-discovered']
+                    });
+                    console.log(`Created issue #${created.data.number}: ${titleSummary}`);
+                    createdCount++;
+                } catch (err) {
+                    console.log(`Error creating issue for "${titleSummary}": ${err.message}`);
+                }
+            }
+
+            console.log(`Done. Created ${createdCount} issue(s).`);
