@@ -95,42 +95,46 @@ jobs:
 
             console.log(`Searching X for events from ${yesterday} to ${today}...`);
 
-            const systemPrompt = `You are an event researcher for a programmer health awareness project.
-            Your task is to search X for reports of IT/tech worker sudden deaths
-            related to overwork, late-night work, or excessive overtime.
+            const systemPrompt = [
+                'You are an event researcher for a programmer health awareness project.',
+                'Your task is to search X for reports of IT/tech worker sudden deaths',
+                'related to overwork, late-night work, or excessive overtime.',
+                '',
+                'For each event found, assess its credibility on a scale of 1-10 based on:',
+                '- Is it from a credible news source or verified account?',
+                '- Are there corroborating posts?',
+                '- Does it contain specific details (industry, location, circumstances)?',
+                '- Is it a real incident report (not opinion/commentary/satire)?',
+                '',
+                'Only include events with credibility >= 7.',
+                '',
+                'For each qualifying event, extract:',
+                '- date_period: fuzzy time period (e.g. "2026-Q1")',
+                '- age_range: one of "20-25岁","25-30岁","30-35岁","35-40岁","40-45岁","45岁以上","未知"',
+                '- industry: one of "互联网","游戏","金融科技","电商","教育科技","企业服务","硬件/IoT","通信","其他IT","未知"',
+                '- province: Chinese province or country name for international events',
+                '- city: major city only, optional',
+                '- summary: event summary in Chinese, ≤100 chars, single line (no newlines)',
+                '- details: event details in Chinese, ≤200 chars, single line (no newlines)',
+                '- source_url: original X post URL or news URL',
+                '- source_name: media or account name',
+                '- tags: from ["加班","熬夜","连续工作","忽视身体信号","猝死","过劳"] (use Chinese value only, must be exact match)',
+                '- credibility: 1-10 score',
+                '- language: "zh" or "en" (language of original source)',
+                '',
+                'Respond ONLY with a JSON array. If no events found, respond with [].',
+                'Do NOT include commentary, only the JSON array.',
+            ].join('\n');
 
-            For each event found, assess its credibility on a scale of 1-10 based on:
-            - Is it from a credible news source or verified account?
-            - Are there corroborating posts?
-            - Does it contain specific details (industry, location, circumstances)?
-            - Is it a real incident report (not opinion/commentary/satire)?
-
-            Only include events with credibility >= 7.
-
-            For each qualifying event, extract:
-            - date_period: fuzzy time period (e.g. "2026-Q1")
-            - age_range: one of "20-25岁","25-30岁","30-35岁","35-40岁","40-45岁","45岁以上","未知"
-            - industry: one of "互联网","游戏","金融科技","电商","教育科技","企业服务","硬件/IoT","通信","其他IT","未知"
-            - province: Chinese province or country name for international events
-            - city: major city only, optional
-            - summary: event summary in Chinese, ≤100 chars, single line (no newlines)
-            - details: event details in Chinese, ≤200 chars, single line (no newlines)
-            - source_url: original X post URL or news URL
-            - source_name: media or account name
-            - tags: from ["加班","熬夜","连续工作","忽视身体信号","猝死","过劳"] (use Chinese value only, must be exact match)
-            - credibility: 1-10 score
-            - language: "zh" or "en" (language of original source)
-
-            Respond ONLY with a JSON array. If no events found, respond with [].
-            Do NOT include commentary, only the JSON array.`;
-
-            const userPrompt = `Search X for programmer/IT worker sudden death events from the past 24 hours.
-
-            Search in both Chinese and English:
-            Chinese: 程序员猝死, 码农猝死, IT从业者猝死, 技术人员过劳死, 互联网加班猝死
-            English: programmer sudden death, tech worker died overwork, developer death overtime, IT worker sudden death, software engineer died
-
-            Today's date: ${today}`;
+            const userPrompt = [
+                'Search X for programmer/IT worker sudden death events from the past 24 hours.',
+                '',
+                'Search in both Chinese and English:',
+                'Chinese: 程序员猝死, 码农猝死, IT从业者猝死, 技术人员过劳死, 互联网加班猝死',
+                'English: programmer sudden death, tech worker died overwork, developer death overtime, IT worker sudden death, software engineer died',
+                '',
+                `Today's date: ${today}`,
+            ].join('\n');
 
             let grokResponse;
             try {
@@ -329,53 +333,53 @@ jobs:
                 const titleSummary = (event.summary || '未知事件').slice(0, 50);
 
                 const issueBody = [
-                    '### \uD83D\uDD17 新闻来源链接 / News Source URL',
+                    '### 🔗 新闻来源链接 / News Source URL',
                     '',
                     event.source_url,
                     '',
-                    '### \uD83D\uDCF0 媒体名称 / Media Name',
+                    '### 📰 媒体名称 / Media Name',
                     '',
                     event.source_name || '未知',
                     '',
-                    '### \uD83D\uDCC5 事件时间段 / Event Period',
+                    '### 📅 事件时间段 / Event Period',
                     '',
                     event.date_period || '未知',
                     '',
-                    '### \uD83D\uDC64 年龄段 / Age Range',
+                    '### 👤 年龄段 / Age Range',
                     '',
                     event.age_range || '未知',
                     '',
-                    '### \uD83C\uDFE2 行业 / Industry',
+                    '### 🏢 行业 / Industry',
                     '',
                     event.industry || '未知',
                     '',
-                    '### \uD83D\uDCCD 省份 / Province',
+                    '### 📍 省份 / Province',
                     '',
                     event.province || '未知',
                     '',
-                    '### \uD83C\uDFD9\uFE0F 城市 / City (可选)',
+                    '### 🏙️ 城市 / City (可选)',
                     '',
                     cityValue,
                     '',
-                    '### \uD83D\uDCDD 事件摘要 / Summary',
+                    '### 📝 事件摘要 / Summary',
                     '',
                     event.summary,
                     '',
-                    '### \uD83D\uDCD6 详细描述 / Details',
+                    '### 📖 详细描述 / Details',
                     '',
                     event.details,
                     '',
-                    '### \uD83C\uDFF7\uFE0F 相关标签 / Tags',
+                    '### 🏷️ 相关标签 / Tags',
                     '',
                     tagsSection,
                     '',
-                    '### \u2705 确认事项 / Confirmations',
+                    '### ✅ 确认事项 / Confirmations',
                     '',
                     '- [x] 我确认此事件来自公开媒体报道，非道听途说',
                     '- [x] 我确认提供的信息已进行必要的匿名化处理',
                     '- [x] 我理解此信息仅用于健康警示目的，尊重逝者及家属',
                     '',
-                    '### \uD83D\uDCAC 补充信息 / Additional Info (可选)',
+                    '### 💬 补充信息 / Additional Info (可选)',
                     '',
                     `Auto-discovered by Grok x_search on ${today}.`,
                     `Credibility score: ${event.credibility || 'N/A'}/10.`,
