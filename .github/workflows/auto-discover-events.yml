@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '0 8 * * *'   # 08:00 UTC daily (16:00 CST)
   workflow_dispatch:
+    inputs:
+      search_days:
+        description: 'Number of days to search back'
+        required: false
+        default: '30'
+        type: string
 
 concurrency:
   group: auto-discover-events
@@ -29,6 +35,7 @@ jobs:
           GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: ${{ env.OPENROUTER_MODEL }}
+          SEARCH_DAYS: ${{ github.event.inputs.search_days || '30' }}
         with:
           script: |
             const https = require('https');
@@ -91,9 +98,10 @@ jobs:
             // ============================================================
 
             const today = new Date().toISOString().slice(0, 10);
-            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+            const searchDays = parseInt(process.env.SEARCH_DAYS || '30', 10);
+            const fromDate = new Date(Date.now() - searchDays * 86400000).toISOString().slice(0, 10);
 
-            console.log(`Searching X for events from ${yesterday} to ${today}...`);
+            console.log(`Searching X for events from ${fromDate} to ${today} (${searchDays} days)...`);
 
             const systemPrompt = [
                 'You are an event researcher for a programmer health awareness project.',
@@ -127,7 +135,7 @@ jobs:
             ].join('\n');
 
             const userPrompt = [
-                'Search X for programmer/IT worker sudden death events from the past 24 hours.',
+                `Search X for programmer/IT worker sudden death events from the past ${searchDays} days.`,
                 '',
                 'Search in both Chinese and English:',
                 'Chinese: 程序员猝死, 码农猝死, IT从业者猝死, 技术人员过劳死, 互联网加班猝死',
@@ -149,7 +157,7 @@ jobs:
                         ],
                         tools: [{
                             type: 'x_search',
-                            from_date: yesterday,
+                            from_date: fromDate,
                             to_date: today
                         }]
                     }
