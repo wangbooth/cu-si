@@ -135,7 +135,7 @@ jobs:
             ].join('\n');
 
             const userPrompt = [
-                `Search X for programmer/IT worker sudden death events from the past ${searchDays} days.`,
+                `Search X for sudden death or overwork death events from the past ${searchDays} days.`,
                 '',
                 'Search in both Chinese and English:',
                 'Chinese: 过劳死, 加班猝死, 猝死 加班, 猝死 过劳, 工作压力猝死',
