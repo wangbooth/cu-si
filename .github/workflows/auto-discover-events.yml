@@ -172,7 +172,7 @@ jobs:
             for (const item of (grokResponse.output || [])) {
                 if (item.type === 'message' && item.role === 'assistant') {
                     for (const content of (item.content || [])) {
-                        if (content.type === 'text') {
+                        if (content.type === 'text' || content.type === 'output_text') {
                             rawText += content.text;
                         }
                     }
