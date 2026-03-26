@@ -36,7 +36,7 @@ function ensureDir(dir) {
 }
 
 function loadClaudeSettings() {
-  ensureDir(CLAUDE_CONFIG_DIR);
+  ensureDir(dirname(CLAUDE_SETTINGS_FILE));
   if (existsSync(CLAUDE_SETTINGS_FILE)) {
     try {
       return JSON.parse(readFileSync(CLAUDE_SETTINGS_FILE, 'utf8'));
@@ -48,7 +48,7 @@ function loadClaudeSettings() {
 }
 
 function saveClaudeSettings(settings) {
-  ensureDir(CLAUDE_CONFIG_DIR);
+  ensureDir(dirname(CLAUDE_SETTINGS_FILE));
   writeFileSync(CLAUDE_SETTINGS_FILE, JSON.stringify(settings, null, 2));
 }
 
