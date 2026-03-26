@@ -61,7 +61,7 @@
         },
         "industry": {
           "type": "string",
-          "description": "行业，如：互联网、医疗、教育、金融、传媒、政府、制造业等"
+          "description": "行业，如：互联网、医疗、教育、金融、传媒、政府、制造业等；不明时填"未知""
         },
         "province": {
           "type": "string",
