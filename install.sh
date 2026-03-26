@@ -71,7 +71,7 @@ check_deps() {
     exit 1
   fi
   local node_major
-  node_major=$(node -e "process.stdout.write(String(process.versions.node.split('.')[0]))")
+  node_major=$(node --version | tr -d 'v' | cut -d'.' -f1)
   if [[ "$node_major" -lt 18 ]]; then
     echo "❌ 需要 Node.js 18+（当前版本: $(node --version)）"
     echo "请升级 Node.js: https://nodejs.org"
@@ -159,6 +159,7 @@ do_uninstall() {
     # Inline node script to remove hook entry without the install.js file
     local tmp_script
     tmp_script=$(mktemp /tmp/cusi-uninstall-XXXXXX.cjs)
+    trap 'rm -f "$tmp_script"' EXIT
     cat > "$tmp_script" << 'NODEEOF'
 const fs = require('fs');
 const path = process.env.CUSI_SETTINGS_FILE;
