@@ -13,9 +13,18 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Parse optional overrides from CLI args (used by install.sh for project-level installs)
+// --settings-file=/path/to/settings.json
+// --hook-path=/path/to/hook.js
+const _args = process.argv.slice(2);
+function _getFlag(name) {
+  const entry = _args.find(a => a.startsWith(`${name}=`));
+  return entry ? entry.slice(name.length + 1) : null;
+}
+
 const CLAUDE_CONFIG_DIR = join(homedir(), '.claude');
-const CLAUDE_SETTINGS_FILE = join(CLAUDE_CONFIG_DIR, 'settings.json');
-const HOOK_SCRIPT = join(__dirname, 'hook.js');
+const CLAUDE_SETTINGS_FILE = _getFlag('--settings-file') || join(CLAUDE_CONFIG_DIR, 'settings.json');
+const HOOK_SCRIPT = _getFlag('--hook-path') || join(__dirname, 'hook.js');
 const CUSI_CONFIG_DIR = join(homedir(), '.cusi');
 
 const HOOK_NAME = 'cusi-health-reminder';
@@ -146,9 +155,7 @@ function uninstall() {
 // 主程序
 // ============================================================================
 
-const args = process.argv.slice(2);
-
-if (args.includes('--uninstall') || args.includes('-u') || args.includes('uninstall')) {
+if (_args.includes('--uninstall') || _args.includes('-u') || _args.includes('uninstall')) {
   uninstall();
 } else {
   install();
