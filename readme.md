@@ -110,7 +110,7 @@
   "id": "string, 唯一标识",
   "date_period": "string, 模糊化日期如 '2024年下半年' 或 '2024-Q4'",
   "age_range": "string, 年龄段如 '30-35岁'",
-  "industry": "string, 行业如 '互联网' '游戏' '金融科技'",
+  "industry": "string, 行业如 '互联网' '医疗' '教育' '金融'（自由填写）",
   "province": "string, 省份",
   "city": "string, 城市（可选，大城市可保留）",
   "summary": "string, 事件摘要，100字以内",
