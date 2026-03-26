@@ -93,8 +93,7 @@ jobs:
 
             // Clean up age range and industry (remove "未知 / Unknown" format)
             let cleanAgeRange = ageRange === '未知 / Unknown' ? '未知' : ageRange;
-            let cleanIndustry = industry === '未知 / Unknown' ? '未知' :
-                               industry === '其他IT / Other IT' ? '其他IT' : industry;
+            let cleanIndustry = industry === '未知 / Unknown' ? '未知' : industry;
             let cleanProvince = province === '未知 / Unknown' ? '未知' :
                                province === '其他省份' ? '其他' : province;
 
