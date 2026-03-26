@@ -113,9 +113,15 @@ function httpsPost(url, headers, body, timeoutMs = 120000) {
 
     const systemPrompt = [
         'You are an event researcher for a workplace health awareness project.',
-        'Your task is to search X for reports of sudden deaths or overwork deaths',
-        'related to excessive work, late-night work, or ignoring body warning signs.',
-        'This includes any profession — tech workers, medical staff, teachers, finance workers, etc.',
+        'Search X broadly for reports of people who died suddenly (猝死/突然去世) where there is',
+        'evidence — explicit or circumstantial — that work contributed to the death.',
+        'Qualifying signals include: heavy workload, long hours, overtime, late-night work,',
+        'ignoring body warning signs, or work-related stress. The word "过劳" does NOT need to',
+        'appear. A public figure dying of cardiac arrest (心源性猝死) after intense work periods',
+        'qualifies. Any profession qualifies — tech, medical, education, finance, entertainment, etc.',
+        '',
+        'Use multiple search strategies: search for 猝死, 心源性猝死, 突发去世, sudden death,',
+        'and also search for specific recent high-profile cases you are aware of.',
         '',
         'For each event found, assess its credibility on a scale of 1-10 based on:',
         '- Is it from a credible news source or verified account?',
@@ -144,11 +150,11 @@ function httpsPost(url, headers, body, timeoutMs = 120000) {
     ].join('\n');
 
     const userPrompt = [
-        `Search X for sudden death or overwork death events from the past ${SEARCH_DAYS} days.`,
+        `Search X for work-related sudden death events from the past ${SEARCH_DAYS} days.`,
         '',
-        'Search in both Chinese and English:',
-        'Chinese: 过劳死, 加班猝死, 猝死 加班, 猝死 过劳, 工作压力猝死',
-        'English: overwork death, died overwork, sudden death overwork, karoshi, worked to death',
+        'Cast a wide net — search for 猝死, 心源性猝死, 突然去世, sudden death, died suddenly,',
+        'and any high-profile cases of people dying unexpectedly where work stress may be a factor.',
+        'Do NOT limit yourself to posts that use "过劳" or "加班" explicitly.',
         '',
         `Today's date: ${today}`,
     ].join('\n');
