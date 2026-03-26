@@ -70,6 +70,13 @@ check_deps() {
     echo "请先安装 Node.js: https://nodejs.org"
     exit 1
   fi
+  local node_major
+  node_major=$(node -e "process.stdout.write(String(process.versions.node.split('.')[0]))")
+  if [[ "$node_major" -lt 18 ]]; then
+    echo "❌ 需要 Node.js 18+（当前版本: $(node --version)）"
+    echo "请升级 Node.js: https://nodejs.org"
+    exit 1
+  fi
   echo "✓ node $(node --version), npm $(npm --version)"
 }
 
@@ -99,7 +106,7 @@ download_files() {
 # ---------------- npm install ----------------
 run_npm_install() {
   echo "📦 正在安装依赖..."
-  (cd "${INSTALL_DIR}" && npm install --silent)
+  (cd "${INSTALL_DIR}" && npm install --quiet)
   echo "✓ 依赖安装完成"
 }
 
@@ -150,9 +157,11 @@ do_uninstall() {
   else
     echo "⚠️  未找到 hook 文件，尝试仅清理配置..."
     # Inline node script to remove hook entry without the install.js file
-    node - <<EOF
+    local tmp_script
+    tmp_script=$(mktemp /tmp/cusi-uninstall-XXXXXX.cjs)
+    cat > "$tmp_script" << 'NODEEOF'
 const fs = require('fs');
-const path = '${SETTINGS_FILE}';
+const path = process.env.CUSI_SETTINGS_FILE;
 if (!fs.existsSync(path)) { console.log('配置文件不存在，无需清理'); process.exit(0); }
 const s = JSON.parse(fs.readFileSync(path, 'utf8'));
 if (s.hooks && s.hooks.stop) {
@@ -160,7 +169,9 @@ if (s.hooks && s.hooks.stop) {
   fs.writeFileSync(path, JSON.stringify(s, null, 2));
   console.log('✓ Hook 已从配置中移除');
 }
-EOF
+NODEEOF
+    CUSI_SETTINGS_FILE="${SETTINGS_FILE}" node "$tmp_script"
+    rm -f "$tmp_script"
   fi
 
   # Remove hook directory
