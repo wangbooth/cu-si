@@ -40,7 +40,7 @@ const MAX_ISSUES_PER_RUN = 5;
 // Helper: HTTPS POST (with HTTP proxy tunnel support)
 // ============================================================
 
-function httpsPost(url, headers, body, timeoutMs = 120000) {
+function httpsPost(url, headers, body, timeoutMs = 180000) {
     return new Promise((resolve, reject) => {
         const urlObj = new URL(url);
         const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
