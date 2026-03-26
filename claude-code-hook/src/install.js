@@ -70,29 +70,33 @@ function install() {
     settings.hooks = {};
   }
 
-  // 添加 stop hook
-  if (!settings.hooks.stop) {
-    settings.hooks.stop = [];
+  // 清理旧版本写入的小写 stop 键
+  if (settings.hooks.stop) {
+    delete settings.hooks.stop;
   }
 
-  // 检查是否已安装
-  const existingHookIndex = settings.hooks.stop.findIndex(
-    hook => hook.name === HOOK_NAME || (hook.command && hook.command.includes('cusi'))
-  );
+  // 添加 Stop hook（Claude Code 要求首字母大写）
+  if (!settings.hooks.Stop) {
+    settings.hooks.Stop = [];
+  }
 
-  const hookConfig = {
-    name: HOOK_NAME,
-    command: `node "${HOOK_SCRIPT}"`,
-    description: '程序员健康提醒 - 深夜工作时提醒注意休息'
+  // 检查是否已安装（在嵌套的 hooks 数组里查找）
+  const isCusiCommand = entry =>
+    Array.isArray(entry.hooks) &&
+    entry.hooks.some(h => h.command && h.command.includes('cusi'));
+
+  const existingIndex = settings.hooks.Stop.findIndex(isCusiCommand);
+
+  const hookEntry = {
+    matcher: '',
+    hooks: [{ type: 'command', command: `node "${HOOK_SCRIPT}"` }]
   };
 
-  if (existingHookIndex >= 0) {
-    // 更新现有 hook
-    settings.hooks.stop[existingHookIndex] = hookConfig;
+  if (existingIndex >= 0) {
+    settings.hooks.Stop[existingIndex] = hookEntry;
     console.log('📝 更新现有 hook 配置');
   } else {
-    // 添加新 hook
-    settings.hooks.stop.push(hookConfig);
+    settings.hooks.Stop.push(hookEntry);
     console.log('➕ 添加新 hook 配置');
   }
 
@@ -126,20 +130,28 @@ function uninstall() {
 
   const settings = loadClaudeSettings();
 
-  if (settings.hooks && settings.hooks.stop) {
-    const initialLength = settings.hooks.stop.length;
-    settings.hooks.stop = settings.hooks.stop.filter(
-      hook => hook.name !== HOOK_NAME && !(hook.command && hook.command.includes('cusi'))
-    );
+  let removed = false;
 
-    if (settings.hooks.stop.length < initialLength) {
-      saveClaudeSettings(settings);
-      console.log('✅ Hook 已从 Claude 配置中移除');
-    } else {
-      console.log('ℹ️  未找到已安装的 hook');
-    }
+  // 清理旧版本小写 stop 键
+  if (settings.hooks && settings.hooks.stop) {
+    delete settings.hooks.stop;
+    removed = true;
+  }
+
+  // 从 Stop 数组移除 cusi hook
+  if (settings.hooks && settings.hooks.Stop) {
+    const before = settings.hooks.Stop.length;
+    settings.hooks.Stop = settings.hooks.Stop.filter(
+      entry => !(Array.isArray(entry.hooks) && entry.hooks.some(h => h.command && h.command.includes('cusi')))
+    );
+    if (settings.hooks.Stop.length < before) removed = true;
+  }
+
+  if (removed) {
+    saveClaudeSettings(settings);
+    console.log('✅ Hook 已从 Claude 配置中移除');
   } else {
-    console.log('ℹ️  Claude 配置中没有 hooks');
+    console.log('ℹ️  未找到已安装的 hook');
   }
 
   console.log(`
