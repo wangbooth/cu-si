@@ -7,10 +7,11 @@
  * Hook 类型: stop (在 Claude 完成响应后触发)
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -23,6 +24,9 @@ const CONFIG_DIR = join(homedir(), '.cusi');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 const STATE_FILE = join(CONFIG_DIR, 'state.json');
 const EVENTS_FILE = join(__dirname, '..', '..', 'data', 'events.json');
+
+const EVENTS_UPDATE_URL = 'https://raw.githubusercontent.com/wangbooth/cu-si/main/data/events.json';
+const EVENTS_UPDATE_INTERVAL_DAYS = 7;
 
 // ============================================================================
 // 默认配置
@@ -260,7 +264,48 @@ function formatReminder(event, level, config) {
 // 主逻辑
 // ============================================================================
 
+// ============================================================================
+// 后台事件数据更新
+// ============================================================================
+
+function scheduleEventsUpdate() {
+  const localEventsFile = join(CONFIG_DIR, 'events.json');
+  try {
+    const stat = statSync(localEventsFile);
+    const ageDays = (Date.now() - stat.mtimeMs) / (1000 * 60 * 60 * 24);
+    if (ageDays < EVENTS_UPDATE_INTERVAL_DAYS) return;
+  } catch {
+    // file doesn't exist yet, skip background update (install.sh handles first download)
+    return;
+  }
+
+  // Spawn detached child process to download in background without blocking exit
+  const script = `
+    const https = require('https');
+    const fs = require('fs');
+    const url = process.env.CUSI_EVENTS_URL;
+    const dest = process.env.CUSI_EVENTS_DEST;
+    https.get(url, res => {
+      if (res.statusCode !== 200) return;
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => {
+        try { JSON.parse(data); fs.writeFileSync(dest, data); } catch (_) {}
+      });
+    }).on('error', () => {});
+  `;
+
+  const child = spawn(process.execPath, ['-e', script], {
+    detached: true,
+    stdio: 'ignore',
+    env: { CUSI_EVENTS_URL: EVENTS_UPDATE_URL, CUSI_EVENTS_DEST: localEventsFile }
+  });
+  child.unref();
+}
+
 function main() {
+  scheduleEventsUpdate();
+
   const config = loadConfig();
   const state = loadState();
 
