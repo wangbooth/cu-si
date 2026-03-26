@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Cusi Events Database",
-  "description": "程序员健康警示事件数据库",
+  "description": "过劳猝死事件数据库",
   "type": "object",
   "required": ["version", "last_updated", "disclaimer", "events"],
   "properties": {
@@ -61,8 +61,7 @@
         },
         "industry": {
           "type": "string",
-          "description": "行业",
-          "enum": ["互联网", "游戏", "金融科技", "电商", "教育科技", "企业服务", "硬件/IoT", "通信", "其他IT", "未知"]
+          "description": "行业，如：互联网、医疗、教育、金融、传媒、政府、制造业等"
         },
         "province": {
           "type": "string",
