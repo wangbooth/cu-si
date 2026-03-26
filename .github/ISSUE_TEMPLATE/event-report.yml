@@ -1,5 +1,5 @@
 name: "\U0001F4CB 事件报告 / Event Report"
-description: "提交程序员健康警示事件 / Submit a programmer health warning event"
+description: "提交过劳猝死健康警示事件 / Submit an overwork/sudden-death health warning event"
 title: "[事件] "
 labels: ["event-submission", "pending-review"]
 body:
@@ -65,22 +65,12 @@ body:
     validations:
       required: true
 
-  - type: dropdown
+  - type: input
     id: industry
     attributes:
       label: "\U0001F3E2 行业 / Industry"
-      description: "所属行业类型"
-      options:
-        - "互联网"
-        - "游戏"
-        - "金融科技"
-        - "电商"
-        - "教育科技"
-        - "企业服务"
-        - "硬件/IoT"
-        - "通信"
-        - "其他IT / Other IT"
-        - "未知 / Unknown"
+      description: "所属行业，可自由填写"
+      placeholder: "例如：互联网、医疗、教育、金融、传媒、制造业、政府、律师事务所..."
     validations:
       required: true
 
@@ -126,7 +116,7 @@ body:
       label: "\U0001F4DD 事件摘要 / Summary"
       description: "100字以内的简短摘要，用于提醒弹窗展示"
       placeholder: |
-        例如：某互联网公司程序员连续加班后在工位突发不适，经抢救无效离世。
+        例如：某医院医生连续值班后突发不适，经抢救无效离世。
     validations:
       required: true
 
@@ -136,8 +126,8 @@ body:
       label: "\U0001F4D6 详细描述 / Details"
       description: "200字以内，包含警示意义的细节（避免血腥描述）"
       placeholder: |
-        例如：据报道，当事人此前连续多日加班至深夜，事发当天仍在处理紧急项目。
-        同事反映其曾多次表示身体不适但未及时就医。事件引发业内对程序员健康的广泛关注。
+        例如：据报道，当事人此前连续多日加班至深夜，事发当天仍在处理紧急工作。
+        同事反映其曾多次表示身体不适但未及时就医。事件引发社会对职场过劳健康的广泛关注。
     validations:
       required: true
 
