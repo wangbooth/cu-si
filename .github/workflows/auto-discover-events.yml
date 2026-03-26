@@ -46,7 +46,6 @@ jobs:
 
             const VALID_TAGS = ['加班', '熬夜', '连续工作', '忽视身体信号', '猝死', '过劳'];
             const VALID_AGE_RANGES = ['20-25岁', '25-30岁', '30-35岁', '35-40岁', '40-45岁', '45岁以上', '未知'];
-            const VALID_INDUSTRIES = ['互联网', '游戏', '金融科技', '电商', '教育科技', '企业服务', '硬件/IoT', '通信', '其他IT', '未知'];
             const TAG_BILINGUAL = {
                 '加班': '加班 / Overtime',
                 '熬夜': '熬夜 / Late night',
@@ -104,9 +103,10 @@ jobs:
             console.log(`Searching X for events from ${fromDate} to ${today} (${searchDays} days)...`);
 
             const systemPrompt = [
-                'You are an event researcher for a programmer health awareness project.',
-                'Your task is to search X for reports of IT/tech worker sudden deaths',
-                'related to overwork, late-night work, or excessive overtime.',
+                'You are an event researcher for a workplace health awareness project.',
+                'Your task is to search X for reports of sudden deaths or overwork deaths',
+                'related to excessive work, late-night work, or ignoring body warning signs.',
+                'This includes any profession — tech workers, medical staff, teachers, finance workers, etc.',
                 '',
                 'For each event found, assess its credibility on a scale of 1-10 based on:',
                 '- Is it from a credible news source or verified account?',
@@ -119,7 +119,7 @@ jobs:
                 'For each qualifying event, extract:',
                 '- date_period: fuzzy time period (e.g. "2026-Q1")',
                 '- age_range: one of "20-25岁","25-30岁","30-35岁","35-40岁","40-45岁","45岁以上","未知"',
-                '- industry: one of "互联网","游戏","金融科技","电商","教育科技","企业服务","硬件/IoT","通信","其他IT","未知"',
+                '- industry: free-form string describing the person\'s industry, e.g. "互联网", "医疗", "教育", "金融", "制造业", "传媒", "政府", "未知"',
                 '- province: Chinese province or country name for international events',
                 '- city: major city only, optional',
                 '- summary: event summary in Chinese, ≤100 chars, single line (no newlines)',
@@ -138,8 +138,8 @@ jobs:
                 `Search X for programmer/IT worker sudden death events from the past ${searchDays} days.`,
                 '',
                 'Search in both Chinese and English:',
-                'Chinese: 程序员猝死, 码农猝死, IT从业者猝死, 技术人员过劳死, 互联网加班猝死',
-                'English: programmer sudden death, tech worker died overwork, developer death overtime, IT worker sudden death, software engineer died',
+                'Chinese: 过劳死, 加班猝死, 猝死 加班, 猝死 过劳, 工作压力猝死',
+                'English: overwork death, died overwork, sudden death overwork, karoshi, worked to death',
                 '',
                 `Today's date: ${today}`,
             ].join('\n');
@@ -229,7 +229,6 @@ jobs:
 
                 // Validate enums
                 if (!VALID_AGE_RANGES.includes(c.age_range)) c.age_range = '未知';
-                if (!VALID_INDUSTRIES.includes(c.industry)) c.industry = '未知';
             }
 
             if (candidates.length === 0) {
