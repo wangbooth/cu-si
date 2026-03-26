@@ -8,6 +8,53 @@
 
 **定位**：警示工具 + 健康倡导工具，采用渐进式提醒策略，平衡警示效果与用户体验。
 
+## 安装 Claude Code Hook
+
+在深夜使用 Claude Code 时，自动收到真实的过劳猝死事件提醒。
+
+### 用户级安装（推荐）
+
+适用于所有项目，安装一次全局生效：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wangbooth/cu-si/main/install.sh | bash -s -- --user
+```
+
+### 项目级安装
+
+只在当前项目生效，在项目根目录下运行：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wangbooth/cu-si/main/install.sh | bash -s -- --project
+```
+
+### 卸载
+
+```bash
+# 卸载用户级
+curl -fsSL https://raw.githubusercontent.com/wangbooth/cu-si/main/install.sh | bash -s -- uninstall --user
+
+# 卸载项目级（在项目根目录运行）
+curl -fsSL https://raw.githubusercontent.com/wangbooth/cu-si/main/install.sh | bash -s -- uninstall --project
+```
+
+### 安装后管理
+
+Hook 安装后，使用以下命令管理（用户级路径，项目级同理替换为 `.cusi/hook`）：
+
+```bash
+node ~/.cusi/hook/src/cli.js status        # 查看当前状态
+node ~/.cusi/hook/src/cli.js pause 2       # 暂停提醒 2 小时
+node ~/.cusi/hook/src/cli.js pause tonight # 今晚不再提醒
+node ~/.cusi/hook/src/cli.js test          # 显示测试提醒
+```
+
+### 系统要求
+
+- Node.js 18+
+- npm
+- Claude Code（claude.ai/code）
+
 ## 2. 用户画像
 
 - **主要用户**：18-55岁坐在电脑前长时间工作的人，包括但不限于开发者、设计师、编辑、金融分析师、教师、医生等各行业从业者
