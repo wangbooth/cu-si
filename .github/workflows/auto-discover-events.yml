@@ -245,16 +245,18 @@ jobs:
             console.log(`${candidates.length} candidate(s) passed validation.`);
 
             // ============================================================
-            // Step 2: Dedup via OpenRouter
+            // Step 2: Dedup — Phase 1 (exact URL) + Phase 2 (semantic)
             // ============================================================
 
             // Load existing events
             const fs = require('fs');
             const eventsData = JSON.parse(fs.readFileSync('data/events.json', 'utf8'));
             const existingSummaries = eventsData.events.map(e => e.summary);
+            const existingUrls = new Set(eventsData.events.map(e => e.source).filter(Boolean));
 
             // Fetch open Issues with event-submission label
             let openIssueSummaries = [];
+            const openIssueUrls = new Set();
             try {
                 const openIssues = await github.rest.issues.listForRepo({
                     owner: context.repo.owner,
@@ -265,22 +267,34 @@ jobs:
                 });
                 for (const issue of openIssues.data) {
                     const summaryMatch = issue.body?.match(/### 📝 事件摘要[\s\S]*?\n\n([^\n#]+)/i);
-                    if (summaryMatch) {
-                        openIssueSummaries.push(summaryMatch[1].trim());
-                    }
+                    if (summaryMatch) openIssueSummaries.push(summaryMatch[1].trim());
+                    const urlMatch = issue.body?.match(/### 🔗 新闻来源链接.*\n\n(https?:\/\/[^\n]+)/i);
+                    if (urlMatch) openIssueUrls.add(urlMatch[1].trim());
                 }
             } catch (err) {
                 console.log(`Warning: failed to fetch open issues: ${err.message}`);
             }
 
-            const allExisting = [...existingSummaries, ...openIssueSummaries];
             console.log(`Dedup context: ${existingSummaries.length} DB events + ${openIssueSummaries.length} open Issues`);
+            console.log(`Known URLs: ${existingUrls.size} DB + ${openIssueUrls.size} open Issues`);
 
-            let dedupedCandidates = candidates;
+            // Phase 1: exact URL dedup (deterministic, no LLM needed)
+            const urlFiltered = candidates.filter(c => {
+                if (existingUrls.has(c.source_url) || openIssueUrls.has(c.source_url)) {
+                    console.log(`  [URL-DEDUP] skipping already-known URL: ${c.source_url}`);
+                    return false;
+                }
+                return true;
+            });
+            console.log(`URL dedup: ${candidates.length} → ${urlFiltered.length} (removed ${candidates.length - urlFiltered.length})`);
 
-            if (allExisting.length > 0 && candidates.length > 0) {
+            // Phase 2: semantic dedup via OpenRouter for remaining candidates
+            let dedupedCandidates = urlFiltered;
+            const allExisting = [...existingSummaries, ...openIssueSummaries];
+
+            if (allExisting.length > 0 && urlFiltered.length > 0) {
                 const dedupModel = process.env.OPENROUTER_MODEL || 'minimax/minimax-m2.5:free';
-                console.log(`Calling OpenRouter (${dedupModel}) for dedup...`);
+                console.log(`Calling OpenRouter (${dedupModel}) for semantic dedup...`);
 
                 try {
                     const dedupResponse = await httpsPost(
@@ -295,7 +309,7 @@ jobs:
                                 },
                                 {
                                     role: 'user',
-                                    content: `Existing events (from database and pending Issues):\n${allExisting.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nNew candidates:\n${candidates.map((c, i) => `${i}. ${c.summary}`).join('\n')}\n\nReturn the indices of candidates that are genuinely new events, as a JSON array like [0, 2, 3]. If all are duplicates, return [].`
+                                    content: `Existing events (from database and pending Issues):\n${allExisting.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nNew candidates:\n${urlFiltered.map((c, i) => `${i}. ${c.summary}`).join('\n')}\n\nReturn the indices of candidates that are genuinely new events, as a JSON array like [0, 2, 3]. If all are duplicates, return [].`
                                 }
                             ]
                         }
@@ -307,15 +321,15 @@ jobs:
                     if (arrayMatch) {
                         const indices = JSON.parse(arrayMatch[0]);
                         const validIndices = indices.filter(
-                            i => Number.isInteger(i) && i >= 0 && i < candidates.length
+                            i => Number.isInteger(i) && i >= 0 && i < urlFiltered.length
                         );
-                        dedupedCandidates = validIndices.map(i => candidates[i]);
-                        console.log(`Dedup: ${candidates.length} → ${dedupedCandidates.length} (removed ${candidates.length - dedupedCandidates.length} duplicates)`);
+                        dedupedCandidates = validIndices.map(i => urlFiltered[i]);
+                        console.log(`Semantic dedup: ${urlFiltered.length} → ${dedupedCandidates.length} (removed ${urlFiltered.length - dedupedCandidates.length} duplicates)`);
                     } else {
-                        console.log('Warning: could not parse dedup response, keeping all candidates (fail-open)');
+                        console.log('Warning: could not parse semantic dedup response; using URL-deduped candidates');
                     }
                 } catch (err) {
-                    console.log(`Warning: OpenRouter dedup failed: ${err.message}. Keeping all candidates (fail-open).`);
+                    console.log(`Warning: OpenRouter semantic dedup failed: ${err.message}. Using URL-deduped candidates.`);
                 }
             }
 
