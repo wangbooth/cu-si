@@ -22,5 +22,8 @@ Thumbs.db
 # Cusi local config
 .cusi/
 
+# Internal docs (plans, specs)
+docs/superpowers/
+
 # Logs
 *.log
