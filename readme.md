@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/wangbooth/cu-si/main/install.sh | b
 每次 Claude 完成回应后，hook 自动检测：
 
 - 当前是否在深夜时段（默认 22:00–05:00）
-- 距上次提醒是否已超过间隔（默认 45 分钟）
+- 距上次提醒是否已超过间隔（默认 15 分钟）
 
 满足条件时，直接在 Claude Code 界面弹出提醒。提醒分三个级别，随着持续忽略逐步升级：
 
