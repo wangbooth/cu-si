@@ -214,50 +214,30 @@ function selectEvent(events, state) {
   return pool[index];
 }
 
-function formatReminder(event, level, config) {
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+function formatReminder(event, level) {
+  const urgency = level === 0 ? '温和' : level === 1 ? '较为严肃' : '非常紧迫';
 
-  const divider = '─'.repeat(50);
-  const warningIcon = level === 0 ? '💡' : level === 1 ? '⚠️' : '🚨';
-  const levelText = level === 0 ? '温馨提示' : level === 1 ? '健康警示' : '紧急警示';
+  let prompt = `[CUSI 健康提醒]\n`;
+  prompt += `现在是深夜，用户仍在使用 Claude Code 工作。`;
+  prompt += `请你以${urgency}的语气，用一段话提醒用户注意健康、适当休息。\n`;
 
-  let message = `\n${divider}\n`;
-  message += `${warningIcon} ${levelText} | ${timeStr}\n`;
-  message += `${divider}\n\n`;
-
-  if (level === 0) {
-    // 温和提醒
-    message += `现在是深夜 ${timeStr}，您已经工作很长时间了。\n`;
-    message += `\n💤 建议：适当休息，保护身体。\n`;
-  } else {
-    // 警示/强烈警示 - 展示事件
-    if (event) {
-      message += `📋 ${event.summary}\n\n`;
-
-      if (level === 2 && event.details) {
-        message += `📖 ${event.details}\n\n`;
-      }
-
-      message += `📍 ${event.province}${event.city ? ' · ' + event.city : ''} | `;
-      message += `👤 ${event.age_range} | 🏢 ${event.industry}\n`;
-
-      if (config.showSource && event.source_name) {
-        message += `📰 来源: ${event.source_name}\n`;
-      }
-
-      message += `\n`;
-    }
-
-    message += `⏰ 现在是 ${timeStr}，请认真考虑是否需要继续工作。\n`;
+  if (event) {
+    prompt += `\n以下是一条真实的过劳猝死事件，请结合这条事件，有温度地提醒用户：\n`;
+    prompt += JSON.stringify({
+      summary: event.summary,
+      ...(level === 2 && event.details ? { details: event.details } : {}),
+      age_range: event.age_range,
+      industry: event.industry,
+      province: event.province,
+      ...(event.city ? { city: event.city } : {}),
+    }, null, 2);
   }
 
-  message += `\n${divider}\n`;
-  message += `暂停提醒: 运行 cusi-config pause [1|2|tonight]\n`;
-  message += `关闭提醒: 运行 cusi-config disable\n`;
-  message += `${divider}\n`;
+  prompt += `\n\n用户可以运行以下命令管理提醒：\n`;
+  prompt += `  cusi-config pause [1|2|tonight]  暂停提醒\n`;
+  prompt += `  cusi-config disable              关闭提醒`;
 
-  return message;
+  return prompt;
 }
 
 // ============================================================================
@@ -324,8 +304,8 @@ function main() {
   const event = level > 0 ? selectEvent(events, state) : null;
 
   // 格式化并输出提醒
-  const reminder = formatReminder(event, level, config);
-  console.error(reminder);  // 使用 stderr 以便不影响 Claude 的输出
+  const reminder = formatReminder(event, level);
+  console.error(reminder);
 
   // 更新状态
   const newState = {
@@ -333,14 +313,14 @@ function main() {
     lastReminder: new Date().toISOString(),
     lastEscalation: state.lastEscalation || new Date().toISOString(),
     currentLevel: level,
-    ignoredLastReminder: true,  // 假设用户会忽略，下次检查时判断
+    ignoredLastReminder: true,
     recentlyShownEvents: event
       ? [...(state.recentlyShownEvents || []).slice(-9), event.id]
       : state.recentlyShownEvents || []
   };
 
   saveState(newState);
-  process.exit(0);
+  process.exit(2);
 }
 
 // 运行
