@@ -216,10 +216,11 @@ function selectEvent(events, state) {
 
 function formatReminder(event, level) {
   const urgency = level === 0 ? '温和' : level === 1 ? '较为严肃' : '非常紧迫';
+  const configFile = join(CONFIG_DIR, 'config.json');
 
-  let prompt = `[CUSI 健康提醒]\n`;
+  let prompt = `[CUSI 健康提醒系统]\n`;
   prompt += `现在是深夜，用户仍在使用 Claude Code 工作。`;
-  prompt += `请你以${urgency}的语气，用一段话提醒用户注意健康、适当休息。\n`;
+  prompt += `请你以${urgency}的语气提醒用户注意健康、适当休息。\n`;
 
   if (event) {
     prompt += `\n以下是一条真实的过劳猝死事件，请结合这条事件，有温度地提醒用户：\n`;
@@ -233,9 +234,13 @@ function formatReminder(event, level) {
     }, null, 2);
   }
 
-  prompt += `\n\n用户可以运行以下命令管理提醒：\n`;
-  prompt += `  cusi-config pause [1|2|tonight]  暂停提醒\n`;
-  prompt += `  cusi-config disable              关闭提醒`;
+  prompt += `\n\n提醒结尾请告诉用户：如果想暂停或关闭提醒，直接在对话里说就好，你来处理。\n`;
+  prompt += `\n[给 Claude 的操作说明，不要展示给用户]\n`;
+  prompt += `如果用户说想暂停提醒，请修改 ${configFile}：\n`;
+  prompt += `  - 暂停 N 小时：将 pauseUntil 设为当前时间加 N 小时的 ISO 字符串\n`;
+  prompt += `  - 暂停到今晚：将 pauseUntil 设为今天 06:00 的 ISO 字符串\n`;
+  prompt += `如果用户说想关闭提醒，请将 ${configFile} 中的 enabled 设为 false。\n`;
+  prompt += `修改完成后告知用户已生效，无需运行任何命令。`;
 
   return prompt;
 }
