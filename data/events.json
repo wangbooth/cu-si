@@ -1,9 +1,34 @@
 {
   "$schema": "./events.schema.json",
   "version": "1.0.0",
-  "last_updated": "2026-03-26T12:17:03.547Z",
+  "last_updated": "2026-03-27T08:28:19.718Z",
   "disclaimer": "本数据仅供健康警示参考，收录因过劳、猝死等原因去世的各行业从业者事件，所有信息均来自公开媒体报道并经过匿名化处理。我们尊重每一位逝者及其家属。",
   "events": [
+    {
+      "id": "EVT-20260327-NKF1",
+      "date_period": "2025-Q4",
+      "age_range": "30-35岁",
+      "industry": "互联网",
+      "province": "广东",
+      "summary": "视源股份32岁程序员高广辉周末在家处理工作时晕倒，呼吸心跳骤停，抢救无效死亡",
+      "details": "猝死前一周最早21:38到家、最晚22:47。120病历记载\"程序员经常熬夜\"，转院病历标注\"工作强度大压力大\"。死后仍收到工作群消息。央视新闻报道。涉事公司支付约39万后工伤申请被受理。",
+      "source": "https://m.thepaper.cn/newsDetail_forward_32439950",
+      "source_name": "澎湃新闻",
+      "verified": true,
+      "verified_by": "wangbooth",
+      "verified_at": "2026-03-27T08:28:19.718Z",
+      "tags": [
+        "加班",
+        "熬夜",
+        "连续工作",
+        "猝死",
+        "过劳",
+        "忽视身体信号"
+      ],
+      "issue_number": 10,
+      "created_at": "2026-03-27T08:28:19.718Z",
+      "city": "广州"
+    },
     {
       "id": "EVT-20260326-7T47",
       "date_period": "2026-Q1",
