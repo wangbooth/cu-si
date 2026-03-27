@@ -36,7 +36,7 @@ const DEFAULT_CONFIG = {
   enabled: true,
   nightStart: 22,        // 深夜开始时间 (24小时制)
   nightEnd: 5,           // 深夜结束时间
-  reminderInterval: 45,  // 提醒间隔 (分钟)
+  reminderInterval: 15,  // 提醒间隔 (分钟)
   pauseUntil: null,      // 暂停到某个时间点
   reminderLevel: 0,      // 当前提醒级别 (0: 温和, 1: 警示, 2: 强烈)
   escalationTime: 30,    // 升级提醒的时间间隔 (分钟)
