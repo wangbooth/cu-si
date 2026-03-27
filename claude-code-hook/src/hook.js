@@ -214,36 +214,51 @@ function selectEvent(events, state) {
   return pool[index];
 }
 
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 function formatReminder(event, level) {
-  const urgency = level === 0 ? '温和' : level === 1 ? '较为严肃' : '非常紧迫';
-  const configFile = join(CONFIG_DIR, 'config.json');
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
-  let prompt = `[CUSI 健康提醒系统]\n`;
-  prompt += `现在是深夜，用户仍在使用 Claude Code 工作。`;
-  prompt += `请你以${urgency}的语气提醒用户注意健康、适当休息。\n`;
-
-  if (event) {
-    prompt += `\n以下是一条真实的过劳猝死事件，请结合这条事件，有温度地提醒用户：\n`;
-    prompt += JSON.stringify({
-      summary: event.summary,
-      ...(level === 2 && event.details ? { details: event.details } : {}),
-      age_range: event.age_range,
-      industry: event.industry,
-      province: event.province,
-      ...(event.city ? { city: event.city } : {}),
-    }, null, 2);
+  if (level === 0) {
+    const messages = [
+      `🌙 深夜 ${timeStr} 了，起来活动一下吧，倒杯水，伸个懒腰。`,
+      `⏰ 已经 ${timeStr} 了，眼睛休息一会儿，看看窗外。`,
+      `💤 ${timeStr}，身体比代码更重要，考虑一下今晚的收工时间？`,
+      `🚶 深夜 ${timeStr}，站起来走走，活动一下颈椎和腰。`,
+      `☕ ${timeStr} 了，如果还要继续，喝点水，别喝咖啡了。`,
+    ];
+    return pick(messages);
   }
 
-  prompt += `\n\n提醒结尾请告诉用户：如果想暂停或关闭提醒，直接在对话里说就好，你来处理。\n`;
-  prompt += `\n[给 Claude 的操作说明，不要展示给用户]\n`;
-  prompt += `如果用户说想暂停提醒，请修改 ${configFile}：\n`;
-  prompt += `  - 暂停 N 小时：将 pauseUntil 设为当前时间加 N 小时的 ISO 字符串\n`;
-  prompt += `  - 暂停到今晚：将 pauseUntil 设为今天 06:00 的 ISO 字符串\n`;
-  prompt += `如果用户说想关闭提醒，请将 ${configFile} 中的 enabled 设为 false。\n`;
-  prompt += `如果用户想调整提醒时间段，请修改 ${configFile} 中的 nightStart 和 nightEnd（24小时制整数，如 23 表示 23:00）。\n`;
-  prompt += `修改完成后告知用户已生效，无需运行任何命令。`;
+  // level 1 & 2：结合真实事件
+  const openings = [
+    `⚠️ ${timeStr}，分享一条真实的事：`,
+    `🔔 深夜 ${timeStr}，有件事想让你知道：`,
+    `📋 ${timeStr} 了，看一条真实发生过的事：`,
+    `⏰ 深夜提醒 · ${timeStr}`,
+  ];
 
-  return prompt;
+  const closings = [
+    `\n今晚还能继续吗？认真想一下。`,
+    `\n工作永远做不完，身体只有一个。`,
+    `\n这不是在吓你，是真实发生过的。`,
+    `\n你现在感觉怎么样？胸闷、头痛要重视。`,
+  ];
+
+  let msg = pick(openings) + '\n\n';
+  msg += `${event.summary}\n`;
+
+  if (level === 2 && event.details) {
+    msg += `\n${event.details}\n`;
+  }
+
+  msg += `\n📍 ${event.province}${event.city ? ' · ' + event.city : ''} | ${event.age_range} | ${event.industry}`;
+  msg += pick(closings);
+
+  return msg;
 }
 
 // ============================================================================
@@ -309,9 +324,9 @@ function main() {
   // 选择事件 (仅在警示级别时需要)
   const event = level > 0 ? selectEvent(events, state) : null;
 
-  // 格式化并输出提醒
+  // 格式化并输出提醒（systemMessage 直接显示给用户，不经过 Claude）
   const reminder = formatReminder(event, level);
-  console.error(reminder);
+  console.log(JSON.stringify({ systemMessage: reminder }));
 
   // 更新状态
   const newState = {
@@ -326,7 +341,7 @@ function main() {
   };
 
   saveState(newState);
-  process.exit(2);
+  process.exit(0);
 }
 
 // 运行
