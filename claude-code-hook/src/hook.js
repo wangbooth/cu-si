@@ -240,6 +240,7 @@ function formatReminder(event, level) {
   prompt += `  - 暂停 N 小时：将 pauseUntil 设为当前时间加 N 小时的 ISO 字符串\n`;
   prompt += `  - 暂停到今晚：将 pauseUntil 设为今天 06:00 的 ISO 字符串\n`;
   prompt += `如果用户说想关闭提醒，请将 ${configFile} 中的 enabled 设为 false。\n`;
+  prompt += `如果用户想调整提醒时间段，请修改 ${configFile} 中的 nightStart 和 nightEnd（24小时制整数，如 23 表示 23:00）。\n`;
   prompt += `修改完成后告知用户已生效，无需运行任何命令。`;
 
   return prompt;
